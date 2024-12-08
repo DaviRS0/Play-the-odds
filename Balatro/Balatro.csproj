@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <TieredCompilation>false</TieredCompilation>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Icon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Content\hearts_19.png" />
+    <None Remove="Content\hearts_2.png" />
+    <None Remove="Content\hearts_3.png" />
+    <None Remove="Content\hearts_4.png" />
+    <None Remove="Content\hearts_5.png" />
+    <None Remove="Content\hearts_6.png" />
+    <None Remove="Content\hearts_7.png" />
+    <None Remove="Content\hearts_8.png" />
+    <None Remove="Content\hearts_9.png" />
+    <None Remove="Content\hearts_a.png" />
+    <None Remove="Content\hearts_j.png" />
+    <None Remove="Content\hearts_k.png" />
+    <None Remove="Content\hearts_q.png" />
+    <None Remove="Content\Play.png" />
+    <None Remove="Content\Quit.png" />
+    <None Remove="Icon.ico" />
+    <None Remove="Icon.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Icon.ico" />
+    <EmbeddedResource Include="Icon.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.1.303" />
+    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.1.303" />
+  </ItemGroup>
+  <Target Name="RestoreDotnetTools" BeforeTargets="Restore">
+    <Message Text="Restoring dotnet tools" Importance="High" />
+    <Exec Command="dotnet tool restore" />
+  </Target>
+</Project>
