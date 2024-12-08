@@ -93,38 +93,38 @@ namespace Balatro
 
         private static int CalculateFlushScore(List<Card> cards)
         {
-            int baseScore = 35;
+            int baseScore = 15;
             int cardValueSum = cards.Sum(card => CardValues[card.Name.Split('_')[1]]);
-            return baseScore + cardValueSum;
+            return (baseScore + cardValueSum) * 4; // Apply multiplier of 4
         }
 
         private static int CalculateFullHouseScore(List<Card> cards)
         {
-            int baseScore = 40;
+            int baseScore = 15;
             int cardValueSum = cards.Sum(card => CardValues[card.Name.Split('_')[1]]);
-            return baseScore + cardValueSum;
+            return (baseScore + cardValueSum) * 3; // Apply multiplier of 3
         }
 
         private static int CalculateThreeOfAKindScore(List<Card> cards)
         {
-            int baseScore = 30;
+            int baseScore = 10;
             int cardValueSum = cards.Sum(card => CardValues[card.Name.Split('_')[1]]);
-            return baseScore + cardValueSum;
+            return (baseScore + cardValueSum) * 3; // Apply multiplier of 3
         }
 
         private static int CalculateTwoPairScore(List<Card> cards)
         {
-            int baseScore = 20;
+            int baseScore = 5;
             int cardValueSum = cards.Sum(card => CardValues[card.Name.Split('_')[1]]);
-            return baseScore + cardValueSum;
+            return (baseScore + cardValueSum) * 2; // Apply multiplier of 2
         }
 
         private static int CalculatePairScore(List<Card> cards)
         {
-            int baseScore = 10;
+            int baseScore = 3;
             var pairGroup = cards.GroupBy(card => card.Name.Split('_')[1]).First(group => group.Count() == 2);
             int pairValueSum = pairGroup.Sum(card => CardValues[card.Name.Split('_')[1]]);
-            return baseScore + pairValueSum;
+            return (baseScore + pairValueSum) * 2; // Apply multiplier of 2
         }
     }
 }

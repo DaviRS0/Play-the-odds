@@ -25,12 +25,14 @@ namespace Balatro
         private bool _isWin;
         private bool _showWinMessage;
         private double _winMessageTimer;
+        private double _gameOverTimer;
 
         private List<Card> _cards;
         private MouseState _previousMouseState;
         private Dictionary<string, Texture2D> _cardTextures;
         private int _score;
         private int _totalScore;
+        private int _totalScoreForAllLevels;
         private int _roundsPlayed;
         private int _discardCount;
         private int _currentLevel;
@@ -38,6 +40,9 @@ namespace Balatro
         private const int MaxDiscards = 3;
         private const int MaxLevels = 5;
         private const double WinMessageDuration = 5.0; // 5 seconds
+
+        private Vector2 _youLosePosition = new Vector2(100, 100); // Adjust position as needed
+        private Rectangle _quitButtonRect;
 
         public Game1()
         {
@@ -79,6 +84,9 @@ namespace Balatro
 
             _playHandButtonRectangle = new Rectangle((screenWidth - totalWidth) / 2, screenHeight - buttonHeight - 20, buttonWidth, buttonHeight);
             _discardButtonRectangle = new Rectangle((screenWidth + 20) / 2, screenHeight - buttonHeight - 20, buttonWidth, buttonHeight);
+           
+            _youLosePosition = new Vector2((GraphicsDevice.Viewport.Width - _font.MeasureString("You Lose").X) / 2, (GraphicsDevice.Viewport.Height - _font.MeasureString("You Lose").Y) / 2);
+            _quitButtonRect = new Rectangle((GraphicsDevice.Viewport.Width - _quitButtonTexture.Width) / 2, GraphicsDevice.Viewport.Height - _quitButtonTexture.Height - 20, _quitButtonTexture.Width, _quitButtonTexture.Height);
 
             _cardTextures = new Dictionary<string, Texture2D>();
             foreach (string suit in CardUtils.Suits)
@@ -93,135 +101,155 @@ namespace Balatro
 
         protected override void Update(GameTime gameTime)
         {
-            MouseState mouseState = Mouse.GetState();
-            KeyboardState keyboardState = Keyboard.GetState();
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+                Exit();
 
-            if (_showWinMessage)
+            if (_isGameOver)
             {
-                _winMessageTimer -= gameTime.ElapsedGameTime.TotalSeconds;
-                if (_winMessageTimer <= 0)
+                _gameOverTimer -= gameTime.ElapsedGameTime.TotalSeconds;
+                if (_gameOverTimer <= 0)
                 {
-                    StartNextRound();
+                    _isGameStarted = false;
+                    _isGameOver = false;
                 }
-                return;
             }
-
-            if (mouseState.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released)
+            else
             {
-                if (!_isGameStarted)
+                MouseState mouseState = Mouse.GetState();
+                KeyboardState keyboardState = Keyboard.GetState();
+
+                if (_showWinMessage)
                 {
-                    if (_playButtonRectangle.Contains(mouseState.Position))
+                    _winMessageTimer -= gameTime.ElapsedGameTime.TotalSeconds;
+                    if (_winMessageTimer <= 0)
                     {
-                        StartGame();
+                        StartNextRound();
                     }
-                    else if (_quitButtonRectangle.Contains(mouseState.Position))
-                    {
-                        Exit();
-                    }
+                    return;
                 }
-                else if (_isGameOver)
+
+                if (mouseState.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released)
                 {
-                    if (_quitButtonRectangle.Contains(mouseState.Position))
+                    if (!_isGameStarted)
                     {
-                        _isGameStarted = false;
-                        _isGameOver = false;
+                        if (_playButtonRectangle.Contains(mouseState.Position))
+                        {
+                            StartGame();
+                        }
+                        else if (_quitButtonRectangle.Contains(mouseState.Position))
+                        {
+                            Exit();
+                        }
                     }
-                }
-                else
-                {
-                    if (_playHandButtonRectangle.Contains(mouseState.Position))
+                    else if (_isGameOver)
                     {
-                        PlayHand();
-                    }
-                    else if (_discardButtonRectangle.Contains(mouseState.Position) && _discardCount < MaxDiscards)
-                    {
-                        DiscardCards();
+                        // No action needed for quit button as it is removed
                     }
                     else
                     {
-                        Point mousePosition = new Point(mouseState.X, mouseState.Y);
-                        int selectedCardCount = _cards.Count(card => card.IsSelected);
-
-                        foreach (var card in _cards)
+                        if (_playHandButtonRectangle.Contains(mouseState.Position))
                         {
-                            if (card.Bounds.Contains(mousePosition))
+                            PlayHand();
+                        }
+                        else if (_discardButtonRectangle.Contains(mouseState.Position) && _discardCount < MaxDiscards)
+                        {
+                            DiscardCards();
+                        }
+                        else
+                        {
+                            Point mousePosition = new Point(mouseState.X, mouseState.Y);
+                            int selectedCardCount = _cards.Count(card => card.IsSelected);
+
+                            foreach (var card in _cards)
                             {
-                                if (card.IsSelected || selectedCardCount < 5)
+                                if (card.Bounds.Contains(mousePosition))
                                 {
-                                    card.ToggleSelection();
-                                    _score = CardUtils.CalculateScore(_cards);
+                                    if (card.IsSelected || selectedCardCount < 5)
+                                    {
+                                        card.ToggleSelection();
+                                        _score = CardUtils.CalculateScore(_cards);
+                                    }
+                                    break;
                                 }
-                                break;
                             }
                         }
                     }
                 }
-            }
 
-            if (_isGameStarted)
-            {
-                if (keyboardState.IsKeyDown(Keys.Escape))
+                if (_isGameStarted)
                 {
-                    _isGameStarted = false;
+                    if (keyboardState.IsKeyDown(Keys.Escape))
+                    {
+                        _isGameStarted = false;
+                    }
+
+                    foreach (var card in _cards)
+                    {
+                        card.Update(gameTime);
+                    }
                 }
 
-                foreach (var card in _cards)
-                {
-                    card.Update(gameTime);
-                }
+                _previousMouseState = mouseState;
             }
 
-            _previousMouseState = mouseState;
             base.Update(gameTime);
         }
-
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
             _spriteBatch.Begin();
 
-            if (!_isGameStarted)
+            if (_isGameOver)
             {
-                _spriteBatch.Draw(_playButtonTexture, _playButtonRectangle, Color.White);
-                _spriteBatch.Draw(_quitButtonTexture, _quitButtonRectangle, Color.White);
+                _spriteBatch.DrawString(_font, "You Lose", _youLosePosition, Color.Red, 0, Vector2.Zero, 2.0f, SpriteEffects.None, 0);
+                string countdownText = $"Returning to start screen in {Math.Ceiling(_gameOverTimer)} seconds";
+                Vector2 countdownPosition = new Vector2(_youLosePosition.X, _youLosePosition.Y + 50); // Adjust position as needed
+                _spriteBatch.DrawString(_font, countdownText, countdownPosition, Color.White);
             }
             else
             {
-                foreach (var card in _cards)
+                if (!_isGameStarted)
                 {
-                    card.Draw(_spriteBatch);
-                    card.DrawValue(_spriteBatch, _font);
-                }
-
-                int screenWidth = _graphics.PreferredBackBufferWidth;
-                int screenHeight = _graphics.PreferredBackBufferHeight;
-
-                _spriteBatch.DrawString(_font, $"Score: {_score}", new Vector2(10, 10), Color.White);
-                _spriteBatch.DrawString(_font, $"Total Score: {_totalScore}", new Vector2(10, 40), Color.White);
-                _spriteBatch.DrawString(_font, $"Required Score: {_requiredScore}", new Vector2(10, 70), Color.White);
-                _spriteBatch.DrawString(_font, $"Discards Left: {MaxDiscards - _discardCount}", new Vector2(10, 130), Color.White);
-                _spriteBatch.DrawString(_font, $"Level: {_currentLevel}", new Vector2(screenWidth - 150, 10), Color.White);
-                _spriteBatch.DrawString(_font, $"Rounds Played: {_roundsPlayed}/4", new Vector2(10, screenHeight - 40), Color.White);
-                _spriteBatch.DrawString(_font, $"Total Score for All Levels: {_totalScore}", new Vector2(10, screenHeight - 70), Color.White);
-
-                if (_showWinMessage)
-                {
-                    string winMessage = "You win! Get ready for the next round";
-                    Vector2 winMessageSize = _font.MeasureString(winMessage);
-                    _spriteBatch.DrawString(_font, winMessage, new Vector2((screenWidth - winMessageSize.X) / 2, 10), Color.Yellow);
-                }
-
-                if (!_isGameOver)
-                {
-                    _spriteBatch.Draw(_playHandButtonTexture, _playHandButtonRectangle, Color.White);
-                    _spriteBatch.Draw(_discardButtonTexture, _discardButtonRectangle, Color.White);
+                    _spriteBatch.Draw(_playButtonTexture, _playButtonRectangle, Color.White);
+                    _spriteBatch.Draw(_quitButtonTexture, _quitButtonRectangle, Color.White);
                 }
                 else
                 {
-                    string resultMessage = _isWin ? "You Win!" : "You Lose!";
-                    _spriteBatch.DrawString(_font, resultMessage, new Vector2(10, 190), Color.White);
-                    _spriteBatch.Draw(_quitButtonTexture, new Rectangle((screenWidth - _quitButtonTexture.Width) / 2, screenHeight - _quitButtonTexture.Height - 20, _quitButtonTexture.Width, _quitButtonTexture.Height), Color.White);
+                    foreach (var card in _cards)
+                    {
+                        card.Draw(_spriteBatch);
+                        card.DrawValue(_spriteBatch, _font);
+                    }
+
+                    int screenWidth = _graphics.PreferredBackBufferWidth;
+                    int screenHeight = _graphics.PreferredBackBufferHeight;
+
+                    _spriteBatch.DrawString(_font, $"Score: {_score}", new Vector2(10, 10), Color.White);
+                    _spriteBatch.DrawString(_font, $"Total Score: {_totalScore}", new Vector2(10, 40), Color.White);
+                    _spriteBatch.DrawString(_font, $"Required Score: {_requiredScore}", new Vector2(10, 70), Color.White);
+                    _spriteBatch.DrawString(_font, $"Discards Left: {MaxDiscards - _discardCount}", new Vector2(10, 130), Color.White);
+                    _spriteBatch.DrawString(_font, $"Level: {_currentLevel}", new Vector2(screenWidth - 150, 10), Color.White);
+                    _spriteBatch.DrawString(_font, $"Rounds Played: {_roundsPlayed}/4", new Vector2(10, screenHeight - 40), Color.White);
+                    _spriteBatch.DrawString(_font, $"Total Score for All Levels: {_totalScoreForAllLevels}", new Vector2(screenWidth - 250, 40), Color.White);
+
+                    if (_showWinMessage)
+                    {
+                        string winMessage = "You win! Get ready for the next round";
+                        Vector2 winMessageSize = _font.MeasureString(winMessage);
+                        _spriteBatch.DrawString(_font, winMessage, new Vector2((screenWidth - winMessageSize.X) / 2, 10), Color.Yellow, 0, Vector2.Zero, 1.1f, SpriteEffects.None, 0);
+                    }
+
+                    if (!_isGameOver)
+                    {
+                        _spriteBatch.Draw(_playHandButtonTexture, _playHandButtonRectangle, Color.White);
+                        _spriteBatch.Draw(_discardButtonTexture, _discardButtonRectangle, Color.White);
+                    }
+                    else
+                    {
+                        string resultMessage = _isWin ? "You Win!" : "You Lose!";
+                        _spriteBatch.DrawString(_font, resultMessage, new Vector2(10, 190), Color.White);
+                    }
                 }
             }
 
@@ -235,6 +263,7 @@ namespace Balatro
             _isGameStarted = true;
             _currentLevel = 1;
             _totalScore = 0;
+            _totalScoreForAllLevels = 0;
             _roundsPlayed = 0;
             _discardCount = 0;
             UpdateScoreRequirement();
@@ -244,7 +273,7 @@ namespace Balatro
 
         private void UpdateScoreRequirement()
         {
-            _requiredScore = 150 + (_currentLevel - 1) * 150; // Increase required score by 150 for each level
+            _requiredScore = 300 + (_currentLevel - 1) * 450; // Increase required score by 450 for each level
         }
 
         private List<Card> GenerateRandomCards()
@@ -269,6 +298,7 @@ namespace Balatro
             if (selectedCardCount > 0)
             {
                 _totalScore += _score;
+                _totalScoreForAllLevels += _score;
                 _roundsPlayed++;
 
                 if (_totalScore >= _requiredScore)
@@ -335,6 +365,19 @@ namespace Balatro
 
                 _score = CardUtils.CalculateScore(_cards);
             }
+        }
+
+        private void CheckGameOver()
+        {
+            if (_score < 0)
+            {
+                _isGameOver = true;
+            }
+        }
+        private void GameOver()
+        {
+            _isGameOver = true;
+            _gameOverTimer = 10.0; // 10 seconds
         }
     }
 }

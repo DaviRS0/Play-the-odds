@@ -11,11 +11,11 @@ namespace Balatro
         public string TextureName { get; }
         public Texture2D Texture { get; }
         public string Name { get; }
-        public int HighCardBonus { get; set; } // This property can remain for other purposes
+        public int HighCardBonus { get; set; }
 
         private Vector2 _targetPosition;
         private float _animationProgress;
-        private const float AnimationSpeed = 0.3f; // Adjusted speed (3 times faster)
+        private const float AnimationSpeed = 0.3f; 
 
         public event Action OnSelectionChanged; // Event to notify selection change
 
